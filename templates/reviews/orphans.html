@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Orphan & Dormant Accounts — IAM Lab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Orphan & Dormant Accounts</h4>
+        <p class="text-muted small mb-0">
+            Accounts requiring remediation — inactive users with active access,
+            and active users with no recent login
+        </p>
+    </div>
+    <a href="{{ url_for('reviews.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Access Reviews
+    </a>
+</div>
+
+<!-- Orphan Accounts -->
+<div class="card border-0 shadow-sm mb-4 {{ 'border-danger border-opacity-50' if orphan_users }}">
+    <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-person-exclamation text-danger me-2"></i>
+        Orphan Accounts
+        <span class="badge {{ 'bg-danger' if orphan_users else 'bg-success' }} ms-1">
+            {{ orphan_users|length }}
+        </span>
+        <span class="text-muted fw-normal small ms-2">— Inactive users who still have active role assignments</span>
+    </div>
+    <div class="card-body p-0">
+        {% if orphan_users %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">User</th>
+                        <th>Email</th>
+                        <th>Department</th>
+                        <th>Active Roles Still Assigned</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in orphan_users %}
+                    <tr class="table-danger bg-opacity-10">
+                        <td class="ps-3">
+                            <div class="fw-semibold">{{ user.name }}</div>
+                            <span class="badge bg-secondary">Inactive</span>
+                        </td>
+                        <td class="text-muted small">{{ user.email }}</td>
+                        <td class="text-muted small">{{ user.department or '—' }}</td>
+                        <td>
+                            {% for ur in orphan_roles[user.id] %}
+                            <span class="badge bg-danger me-1">{{ ur.role.name }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <form method="POST"
+                                  action="{{ url_for('reviews.fix_orphan', user_id=user.id) }}"
+                                  onsubmit="return confirm('Revoke all active roles from {{ user.name }}?')">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="bi bi-shield-x me-1"></i>Fix Orphan
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <i class="bi bi-check-circle fs-2 text-success"></i>
+            <p class="mt-2 mb-0 small">
+                No orphan accounts detected. All inactive users have been fully deprovisioned.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Dormant Accounts -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-moon-stars text-secondary me-2"></i>
+        Dormant Accounts
+        <span class="badge bg-secondary ms-1">{{ dormant_users|length }}</span>
+        <span class="text-muted fw-normal small ms-2">
+            — Active users with no login in {{ dormant_days }}+ days
+        </span>
+    </div>
+    <div class="card-body p-0">
+        {% if dormant_users %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">User</th>
+                        <th>Department</th>
+                        <th>Last Login</th>
+                        <th>Days Inactive</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in dormant_users %}
+                    {% set days = (today - user.last_login).days if user.last_login else 9999 %}
+                    <tr class="table-secondary bg-opacity-10">
+                        <td class="ps-3">
+                            <div class="fw-semibold">{{ user.name }}</div>
+                            <div class="text-muted small">{{ user.email }}</div>
+                        </td>
+                        <td class="text-muted small">{{ user.department or '—' }}</td>
+                        <td class="text-muted small">
+                            {{ user.last_login.strftime('%Y-%m-%d') if user.last_login else 'Never logged in' }}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">
+                                {% if user.last_login %}
+                                    {{ days }} days
+                                {% else %}
+                                    Never
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            {% if user.id != current_user.id %}
+                            <form method="POST"
+                                  action="{{ url_for('reviews.disable_dormant', user_id=user.id) }}"
+                                  onsubmit="return confirm('Disable dormant account for {{ user.name }}?')">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-person-dash me-1"></i>Disable
+                                </button>
+                            </form>
+                            {% else %}
+                            <span class="text-muted small">Your account</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <i class="bi bi-activity fs-2 text-success"></i>
+            <p class="mt-2 mb-0 small">
+                No dormant accounts. All active users have logged in within {{ dormant_days }} days.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

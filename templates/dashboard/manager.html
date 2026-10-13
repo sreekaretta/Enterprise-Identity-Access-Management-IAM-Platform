@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Manager Dashboard — IAM Lab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Manager Dashboard</h4>
+        <p class="text-muted small mb-0">Review access requests from your team</p>
+    </div>
+    <span class="badge bg-primary fs-6 px-3 py-2"><i class="bi bi-person-badge me-1"></i>Manager</span>
+</div>
+
+<!-- Pending Approvals -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">
+            <i class="bi bi-hourglass-split text-warning me-2"></i>Pending Approvals
+            {% if pending_requests %}
+            <span class="badge bg-warning text-dark ms-1">{{ pending_requests|length }}</span>
+            {% endif %}
+        </span>
+    </div>
+    <div class="card-body p-0">
+        {% if pending_requests %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Employee</th>
+                        <th>Resource Requested</th>
+                        <th>Reason</th>
+                        <th>Submitted</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in pending_requests %}
+                    <tr>
+                        <td class="ps-3 fw-semibold">{{ req.requester.name }}</td>
+                        <td>{{ req.resource_requested }}</td>
+                        <td class="text-muted small">{{ req.reason }}</td>
+                        <td class="text-muted small">{{ req.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <a href="#" class="btn btn-success btn-sm me-1">
+                                <i class="bi bi-check-lg"></i> Approve
+                            </a>
+                            <a href="#" class="btn btn-danger btn-sm">
+                                <i class="bi bi-x-lg"></i> Reject
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-check-circle fs-2 text-success"></i>
+            <p class="mt-2">No pending approvals. You're all caught up.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Team Overview -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-people me-2"></i>My Team
+        <span class="badge bg-secondary ms-1">{{ team|length }}</span>
+    </div>
+    <div class="card-body p-0">
+        {% if team %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Name</th>
+                        <th>Email</th>
+                        <th>Department</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for member in team %}
+                    <tr>
+                        <td class="ps-3 fw-semibold">{{ member.name }}</td>
+                        <td class="text-muted small">{{ member.email }}</td>
+                        <td>{{ member.department or '—' }}</td>
+                        <td>
+                            <span class="badge {{ 'bg-success' if member.status == 'Active' else 'bg-secondary' }}">
+                                {{ member.status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-people fs-2"></i>
+            <p class="mt-2">No team members assigned yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

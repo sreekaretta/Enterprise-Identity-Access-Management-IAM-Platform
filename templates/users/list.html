@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Users — IAM Lab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">User Management</h4>
+        <p class="text-muted small mb-0">{{ users|length }} total users</p>
+    </div>
+    <a href="{{ url_for('admin.user_create') }}" class="btn btn-primary">
+        <i class="bi bi-person-plus me-1"></i>Create User
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Name</th>
+                        <th>Email</th>
+                        <th>Department</th>
+                        <th>System Role</th>
+                        <th>Manager</th>
+                        <th>Status</th>
+                        <th>Last Login</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr class="{{ 'table-secondary text-muted' if user.status == 'Inactive' }}">
+                        <td class="ps-3 fw-semibold">
+                            <a href="{{ url_for('admin.user_detail', user_id=user.id) }}" class="text-decoration-none">
+                                {{ user.name }}
+                            </a>
+                        </td>
+                        <td class="small">{{ user.email }}</td>
+                        <td class="small">{{ user.department or '—' }}</td>
+                        <td>
+                            <span class="badge
+                                {% if user.system_role == 'Admin' %}bg-danger
+                                {% elif user.system_role == 'Manager' %}bg-primary
+                                {% else %}bg-secondary{% endif %}">
+                                {{ user.system_role }}
+                            </span>
+                        </td>
+                        <td class="small">{{ user.manager.name if user.manager else '—' }}</td>
+                        <td>
+                            <span class="badge {{ 'bg-success' if user.status == 'Active' else 'bg-secondary' }}">
+                                {{ user.status }}
+                            </span>
+                        </td>
+                        <td class="small text-muted">
+                            {{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never' }}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('admin.user_detail', user_id=user.id) }}"
+                               class="btn btn-outline-primary btn-sm me-1" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{{ url_for('admin.user_edit', user_id=user.id) }}"
+                               class="btn btn-outline-secondary btn-sm" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-people fs-2"></i>
+                            <p class="mt-2">No users found.</p>
+                            <a href="{{ url_for('admin.user_create') }}" class="btn btn-primary btn-sm">Create first user</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

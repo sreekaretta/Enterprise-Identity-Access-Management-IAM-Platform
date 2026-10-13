@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}MFA Setup — IAM Lab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">
+            <i class="bi bi-shield-lock text-primary me-2"></i>
+            Two-Factor Authentication (MFA)
+        </h4>
+        <p class="text-muted small mb-0">
+            Protect your account with a time-based one-time password (TOTP)
+        </p>
+    </div>
+    <a href="{{ url_for('auth.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+
+        {% if already_enabled %}
+        <!-- ── MFA Already Active ─────────────────────────────────────────── -->
+        <div class="card border-0 shadow-sm mb-4 border-start border-4 border-success">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-shield-check-fill text-success fs-2 me-3"></i>
+                    <div>
+                        <div class="fw-semibold">Two-Factor Authentication is Active</div>
+                        <div class="text-muted small">
+                            Your account requires a TOTP code on every login.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm border-danger border-opacity-25">
+            <div class="card-header bg-white text-danger fw-semibold small">
+                <i class="bi bi-exclamation-triangle me-1"></i>Disable Two-Factor Authentication
+            </div>
+            <div class="card-body">
+                <p class="small text-muted">
+                    Disabling MFA reduces your account security. Only do this if you are
+                    re-enrolling with a new device or have a specific reason.
+                </p>
+                <form method="POST" action="{{ url_for('auth.totp_disable') }}"
+                      onsubmit="return confirm('Disable MFA? Your account will only require a password to log in.')">
+                    <button type="submit" class="btn btn-danger btn-sm">
+                        <i class="bi bi-shield-x me-1"></i>Disable MFA
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- ── Setup Flow ──────────────────────────────────────────────────── -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white fw-semibold">
+                Step 1 — Scan the QR Code
+            </div>
+            <div class="card-body text-center">
+                <p class="text-muted small mb-3">
+                    Open <strong>Google Authenticator</strong>, <strong>Authy</strong>, or any TOTP app
+                    and scan this QR code to add IAM Lab.
+                </p>
+                <div id="qrcode" class="d-inline-block p-3 border rounded bg-white mb-3"></div>
+                <div class="text-muted small">
+                    Can't scan? Enter this key manually in your app:<br>
+                    <code class="fs-6 fw-bold user-select-all">{{ secret }}</code>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold">
+                Step 2 — Confirm Setup
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    After scanning, your app will show a 6-digit code. Enter it below to
+                    confirm the setup and enable MFA on your account.
+                </p>
+                <form method="POST" action="{{ url_for('auth.totp_setup') }}" novalidate autocomplete="off">
+                    <input type="hidden" name="action" value="enable">
+                    <div class="mb-3">
+                        <label for="code" class="form-label fw-semibold small">6-Digit Code</label>
+                        <input
+                            type="text"
+                            class="form-control text-center fw-bold"
+                            id="code"
+                            name="code"
+                            placeholder="000000"
+                            maxlength="6"
+                            pattern="[0-9]{6}"
+                            inputmode="numeric"
+                            autofocus
+                            required
+                            style="letter-spacing: 0.3rem; font-size: 1.4rem; max-width: 180px;"
+                        >
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-shield-check me-1"></i>Enable Two-Factor Authentication
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+{% if not already_enabled %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+new QRCode(document.getElementById("qrcode"), {
+    text: {{ provisioning_uri | tojson }},
+    width: 200,
+    height: 200,
+    colorDark: "#000000",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.M
+});
+</script>
+{% endif %}
+{% endblock %}

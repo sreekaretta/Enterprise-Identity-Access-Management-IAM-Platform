@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Review Cycle {{ cycle_name }} — IAM Lab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Review Cycle: {{ cycle_name }}</h4>
+        <p class="text-muted small mb-0">
+            {{ completed_count }} reviewed · {{ pending_count }} pending
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('reviews.index') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>All Cycles
+        </a>
+        {% if pending_count > 0 %}
+        <form method="POST" action="{{ url_for('reviews.complete_cycle', cycle_name=cycle_name) }}"
+              onsubmit="return confirm('Auto-certify all {{ pending_count }} unreviewed role(s) as Keep and close this cycle?')">
+            <button type="submit" class="btn btn-success btn-sm">
+                <i class="bi bi-check-all me-1"></i>Close Cycle (auto-certify remaining)
+            </button>
+        </form>
+        {% else %}
+        <span class="badge bg-success fs-6 px-3 py-2">
+            <i class="bi bi-check-circle me-1"></i>Cycle Complete
+        </span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Progress bar -->
+{% set total = all_urs|length %}
+{% set pct = ((completed_count / total) * 100)|int if total > 0 else 0 %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-3">
+        <div class="d-flex justify-content-between small mb-1">
+            <span class="fw-semibold">Review Progress</span>
+            <span class="text-muted">{{ completed_count }} / {{ total }} ({{ pct }}%)</span>
+        </div>
+        <div class="progress" style="height: 10px;">
+            <div class="progress-bar bg-success" style="width: {{ pct }}%;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Review Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-clipboard-check me-2"></i>User Access Certification
+    </div>
+    <div class="card-body p-0">
+        {% if all_urs %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">User</th>
+                        <th>Department</th>
+                        <th>Role</th>
+                        <th>Assigned</th>
+                        <th>Expires</th>
+                        <th>Decision</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ur in all_urs %}
+                    {% set review = reviewed.get(ur.id) %}
+                    <tr class="{{ 'table-success' if review and review.decision == 'Keep' else 'table-danger bg-opacity-25' if review and review.decision == 'Revoke' else '' }}">
+                        <td class="ps-3 fw-semibold">{{ ur.user.name }}</td>
+                        <td class="text-muted small">{{ ur.user.department or '—' }}</td>
+                        <td><span class="badge bg-info text-dark">{{ ur.role.name }}</span></td>
+                        <td class="text-muted small">{{ ur.assigned_at.strftime('%Y-%m-%d') }}</td>
+                        <td class="small">
+                            {% if ur.expires_at %}
+                                <span class="{{ 'text-danger fw-semibold' if ur.expires_at < today else 'text-muted' }}">
+                                    {{ ur.expires_at.strftime('%Y-%m-%d') }}
+                                    {% if ur.expires_at < today %}⚠ Expired{% endif %}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">No expiry</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if review %}
+                                <span class="badge {{ 'bg-success' if review.decision == 'Keep' else 'bg-danger' }}">
+                                    {{ review.decision }}
+                                </span>
+                                {% if review.comments %}
+                                <div class="text-muted fst-italic" style="font-size:0.72rem;">
+                                    "{{ review.comments[:40] }}{{ '…' if review.comments|length > 40 }}"
+                                </div>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form method="POST"
+                                  action="{{ url_for('reviews.decide', cycle_name=cycle_name, ur_id=ur.id) }}"
+                                  class="d-flex gap-1 align-items-center">
+                                <input type="text" name="comments" class="form-control form-control-sm"
+                                       placeholder="Notes (optional)" style="max-width:140px;">
+                                <button type="submit" name="decision" value="Keep"
+                                        class="btn btn-success btn-sm">
+                                    <i class="bi bi-check-lg"></i> Keep
+                                </button>
+                                <button type="submit" name="decision" value="Revoke"
+                                        class="btn btn-danger btn-sm"
+                                        onclick="return confirm('Revoke {{ ur.role.name }} from {{ ur.user.name }}?')">
+                                    <i class="bi bi-x-lg"></i> Revoke
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-check-circle fs-2 text-success"></i>
+            <p class="mt-2">No active role assignments to review.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

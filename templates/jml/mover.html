@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Mover — {{ user.name }} — IAM Lab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0"><i class="bi bi-arrow-left-right text-primary me-2"></i>Mover — Employee Transfer</h4>
+        <p class="text-muted small mb-0">Update {{ user.name }}'s placement and access</p>
+    </div>
+    <a href="{{ url_for('jml.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>JML Dashboard
+    </a>
+</div>
+
+<div class="row g-4">
+
+    <!-- Current State -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white fw-semibold small">Current State</div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center me-3"
+                         style="width:48px;height:48px;">
+                        <i class="bi bi-person-fill text-secondary fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold">{{ user.name }}</div>
+                        <div class="text-muted small">{{ user.email }}</div>
+                    </div>
+                </div>
+                <div class="row g-1 small">
+                    <div class="col-5 text-muted">Department</div>
+                    <div class="col-7">{{ user.department or '—' }}</div>
+                    <div class="col-5 text-muted">System Role</div>
+                    <div class="col-7">{{ user.system_role }}</div>
+                    <div class="col-5 text-muted">Manager</div>
+                    <div class="col-7">{{ user.manager.name if user.manager else '—' }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold small">Current Roles</div>
+            <div class="card-body p-0">
+                {% if current_roles %}
+                <ul class="list-group list-group-flush">
+                    {% for ur in current_roles %}
+                    <li class="list-group-item px-3 py-2 d-flex justify-content-between align-items-center">
+                        <span class="badge bg-info text-dark">{{ ur.role.name }}</span>
+                        <span class="text-muted small">Since {{ ur.assigned_at.strftime('%Y-%m-%d') }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted small text-center py-3 mb-0">No active roles.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Transfer Form -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold">Transfer Details</div>
+            <div class="card-body p-4">
+                <form method="POST" novalidate>
+
+                    <h6 class="fw-bold text-muted text-uppercase small mb-3">New Placement</h6>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">New Department</label>
+                            <input type="text" name="department" class="form-control"
+                                   value="{{ user.department or '' }}"
+                                   placeholder="e.g. Finance">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">System Role</label>
+                            <select name="system_role" class="form-select">
+                                {% for r in ['Employee', 'Manager', 'Admin'] %}
+                                <option value="{{ r }}" {{ 'selected' if user.system_role == r }}>{{ r }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">New Manager</label>
+                            <select name="manager_id" class="form-select">
+                                <option value="">— None —</option>
+                                {% for mgr in managers %}
+                                <option value="{{ mgr.id }}"
+                                    {{ 'selected' if user.manager_id == mgr.id }}>
+                                    {{ mgr.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    {% if current_roles %}
+                    <hr class="my-3">
+                    <h6 class="fw-bold text-muted text-uppercase small mb-2">Revoke Existing Roles</h6>
+                    <p class="text-muted small mb-3">Check the roles that should be removed due to this transfer.</p>
+                    <div class="row g-2 mb-4">
+                        {% for ur in current_roles %}
+                        <div class="col-md-6">
+                            <div class="form-check border rounded p-3 border-danger border-opacity-25">
+                                <input class="form-check-input" type="checkbox"
+                                       name="revoke_role_ids" value="{{ ur.id }}"
+                                       id="revoke_{{ ur.id }}">
+                                <label class="form-check-label ps-1" for="revoke_{{ ur.id }}">
+                                    <span class="fw-semibold text-danger">Revoke {{ ur.role.name }}</span>
+                                    <div class="text-muted small">Assigned {{ ur.assigned_at.strftime('%Y-%m-%d') }}</div>
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <hr class="my-3">
+                    <h6 class="fw-bold text-muted text-uppercase small mb-2">Add New Roles</h6>
+                    <p class="text-muted small mb-3">Select roles required for the new position.</p>
+                    <div class="row g-2 mb-4">
+                        {% for role in all_roles %}
+                        <div class="col-md-6">
+                            <div class="form-check border rounded p-3">
+                                <input class="form-check-input" type="checkbox"
+                                       name="add_role_ids" value="{{ role.id }}"
+                                       id="add_{{ role.id }}"
+                                       {% if role.id in current_roles|map(attribute='role_id')|list %}disabled{% endif %}>
+                                <label class="form-check-label ps-1" for="add_{{ role.id }}">
+                                    <span class="fw-semibold">{{ role.name }}</span>
+                                    {% if role.id in current_roles|map(attribute='role_id')|list %}
+                                    <span class="badge bg-secondary ms-1">Already assigned</span>
+                                    {% endif %}
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary px-4"
+                                onclick="return confirm('Apply these transfer changes for {{ user.name }}?')">
+                            <i class="bi bi-arrow-left-right me-1"></i>Apply Transfer
+                        </button>
+                        <a href="{{ url_for('jml.dashboard') }}" class="btn btn-outline-secondary px-4">Cancel</a>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

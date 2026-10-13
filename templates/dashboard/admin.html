@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — IAM Lab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Governance Dashboard</h4>
+        <p class="text-muted small mb-0">System-wide identity and access overview</p>
+    </div>
+    <span class="badge bg-danger fs-6 px-3 py-2"><i class="bi bi-shield-fill me-1"></i>Admin</span>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 bg-primary bg-opacity-10 h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-people-fill text-primary fs-2 me-3"></i>
+                    <div>
+                        <div class="fs-3 fw-bold">{{ total_users }}</div>
+                        <div class="text-muted small">Total Users</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 bg-success bg-opacity-10 h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-person-check-fill text-success fs-2 me-3"></i>
+                    <div>
+                        <div class="fs-3 fw-bold">{{ active_users }}</div>
+                        <div class="text-muted small">Active Users</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 bg-secondary bg-opacity-10 h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-person-dash-fill text-secondary fs-2 me-3"></i>
+                    <div>
+                        <div class="fs-3 fw-bold">{{ inactive_users }}</div>
+                        <div class="text-muted small">Inactive Users</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 bg-warning bg-opacity-10 h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-hourglass-split text-warning fs-2 me-3"></i>
+                    <div>
+                        <div class="fs-3 fw-bold">{{ pending_requests }}</div>
+                        <div class="text-muted small">Pending Approvals</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alerts Row -->
+{% if orphan_accounts %}
+<div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+    <div>
+        <strong>{{ orphan_accounts|length }} Orphan Account(s) Detected</strong> —
+        Inactive users still holding active access assignments.
+        {% for u in orphan_accounts %}
+            <span class="badge bg-danger ms-1">{{ u.name }}</span>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="alert alert-success d-flex align-items-center mb-4">
+    <i class="bi bi-check-circle-fill me-2"></i>
+    No orphan accounts detected. All inactive users have been fully deprovisioned.
+</div>
+{% endif %}
+
+<!-- Quick Actions -->
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold">Quick Actions</div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="#" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-person-plus me-1"></i>Create User
+                    </a>
+                    <a href="{{ url_for('admin.request_queue') }}" class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-key me-1"></i>Review Access Requests
+                    </a>
+                    <a href="#" class="btn btn-outline-warning btn-sm">
+                        <i class="bi bi-clipboard-check me-1"></i>Run Access Review
+                    </a>
+                    <a href="{{ url_for('jml.joiner') }}" class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-person-plus me-1"></i>Onboard (Joiner)
+                    </a>
+                    <a href="{{ url_for('jml.dashboard') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-arrow-left-right me-1"></i>JML Lifecycle
+                    </a>
+                    <a href="{{ url_for('reviews.index') }}" class="btn btn-outline-warning btn-sm">
+                        <i class="bi bi-clipboard-check me-1"></i>Access Reviews
+                    </a>
+                    <a href="{{ url_for('reviews.orphans') }}" class="btn btn-outline-danger btn-sm">
+                        <i class="bi bi-person-exclamation me-1"></i>Orphans
+                    </a>
+                    <a href="{{ url_for('reports.index') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-bar-chart me-1"></i>Governance Reports
+                    </a>
+                    <a href="{{ url_for('reports.audit_log') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-journal-text me-1"></i>Audit Log
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Audit Activity -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-semibold"><i class="bi bi-journal-text me-2"></i>Recent Audit Activity</span>
+        <a href="#" class="btn btn-outline-secondary btn-sm">View All Logs</a>
+    </div>
+    <div class="card-body p-0">
+        {% if recent_logs %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Timestamp</th>
+                        <th>Actor</th>
+                        <th>Action</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in recent_logs %}
+                    <tr>
+                        <td class="ps-3 text-muted small">{{ log.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td class="small">{{ log.actor.name if log.actor else 'System' }}</td>
+                        <td>
+                            <span class="badge
+                                {% if 'LOGIN' in log.action %}bg-info text-dark
+                                {% elif 'CREATED' in log.action or 'APPROVED' in log.action %}bg-success
+                                {% elif 'REJECTED' in log.action or 'BLOCKED' in log.action %}bg-danger
+                                {% elif 'REVOKED' in log.action or 'DEACTIVATED' in log.action %}bg-warning text-dark
+                                {% else %}bg-secondary{% endif %}
+                            ">{{ log.action }}</span>
+                        </td>
+                        <td class="small text-muted">{{ log.details or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-journal-x fs-2"></i>
+            <p class="mt-2">No audit entries yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

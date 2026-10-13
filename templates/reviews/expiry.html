@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Access Expiry — IAM Lab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Access Expiry Management</h4>
+        <p class="text-muted small mb-0">Roles that have expired or will expire within 30 days</p>
+    </div>
+    <a href="{{ url_for('reviews.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Access Reviews
+    </a>
+</div>
+
+<!-- Expired — needs immediate action -->
+<div class="card border-0 shadow-sm mb-4 {{ 'border-danger border-opacity-50' if expired }}">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">
+            <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>
+            Expired Access
+            {% if expired %}
+            <span class="badge bg-danger ms-1">{{ expired|length }}</span>
+            {% endif %}
+        </span>
+        {% if expired %}
+        <form method="POST" action="{{ url_for('reviews.revoke_all_expired') }}"
+              onsubmit="return confirm('Revoke ALL {{ expired|length }} expired roles at once?')">
+            <button type="submit" class="btn btn-danger btn-sm">
+                <i class="bi bi-x-circle me-1"></i>Revoke All Expired
+            </button>
+        </form>
+        {% endif %}
+    </div>
+    <div class="card-body p-0">
+        {% if expired %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">User</th>
+                        <th>Department</th>
+                        <th>Role</th>
+                        <th>Assigned</th>
+                        <th>Expired On</th>
+                        <th>Days Overdue</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ur in expired %}
+                    {% set overdue = (today - ur.expires_at).days %}
+                    <tr class="table-danger bg-opacity-10">
+                        <td class="ps-3 fw-semibold">{{ ur.user.name }}</td>
+                        <td class="text-muted small">{{ ur.user.department or '—' }}</td>
+                        <td><span class="badge bg-secondary">{{ ur.role.name }}</span></td>
+                        <td class="text-muted small">{{ ur.assigned_at.strftime('%Y-%m-%d') }}</td>
+                        <td class="text-danger fw-semibold small">{{ ur.expires_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <span class="badge bg-danger">{{ overdue }} day{{ 's' if overdue != 1 }}</span>
+                        </td>
+                        <td>
+                            <form method="POST"
+                                  action="{{ url_for('reviews.revoke_expired', ur_id=ur.id) }}"
+                                  onsubmit="return confirm('Revoke {{ ur.role.name }} from {{ ur.user.name }}?')">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="bi bi-x-circle me-1"></i>Revoke
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <i class="bi bi-check-circle fs-2 text-success"></i>
+            <p class="mt-2 mb-0 small">No expired access found. All grants are within their validity period.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Expiring Soon — warning -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-hourglass-split text-warning me-2"></i>
+        Expiring Within 30 Days
+        {% if expiring_soon %}
+        <span class="badge bg-warning text-dark ms-1">{{ expiring_soon|length }}</span>
+        {% endif %}
+    </div>
+    <div class="card-body p-0">
+        {% if expiring_soon %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">User</th>
+                        <th>Department</th>
+                        <th>Role</th>
+                        <th>Expires On</th>
+                        <th>Days Remaining</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ur in expiring_soon %}
+                    {% set days_left = (ur.expires_at - today).days %}
+                    <tr class="table-warning bg-opacity-10">
+                        <td class="ps-3 fw-semibold">{{ ur.user.name }}</td>
+                        <td class="text-muted small">{{ ur.user.department or '—' }}</td>
+                        <td><span class="badge bg-info text-dark">{{ ur.role.name }}</span></td>
+                        <td class="fw-semibold small text-warning">{{ ur.expires_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <span class="badge {{ 'bg-danger' if days_left <= 7 else 'bg-warning text-dark' }}">
+                                {{ days_left }} day{{ 's' if days_left != 1 }} left
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <i class="bi bi-calendar-check fs-2"></i>
+            <p class="mt-2 mb-0 small">No roles expiring in the next 30 days.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

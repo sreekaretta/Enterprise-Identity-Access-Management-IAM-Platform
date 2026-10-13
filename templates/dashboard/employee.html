@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}My Dashboard — IAM Lab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">My Dashboard</h4>
+        <p class="text-muted small mb-0">Your access and active requests</p>
+    </div>
+    <span class="badge bg-secondary fs-6 px-3 py-2"><i class="bi bi-person me-1"></i>Employee</span>
+</div>
+
+<!-- My Current Access -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-key-fill text-success me-2"></i>My Current Access
+    </div>
+    <div class="card-body p-0">
+        {% if my_roles %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Role</th>
+                        <th>Assigned</th>
+                        <th>Expires</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ur in my_roles %}
+                    <tr>
+                        <td class="ps-3 fw-semibold">{{ ur.role.name }}</td>
+                        <td class="text-muted small">{{ ur.assigned_at.strftime('%Y-%m-%d') }}</td>
+                        <td class="text-muted small">
+                            {{ ur.expires_at.strftime('%Y-%m-%d') if ur.expires_at else 'No expiry' }}
+                        </td>
+                        <td>
+                            <span class="badge bg-success">{{ ur.status }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <i class="bi bi-key fs-2"></i>
+            <p class="mt-2">No active role assignments.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- My Access Requests -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-semibold"><i class="bi bi-send me-2"></i>My Access Requests</span>
+        <a href="{{ url_for('employee.new_request') }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>New Request
+        </a>
+    </div>
+    <div class="card-body p-0">
+        {% if my_requests %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Resource</th>
+                        <th>Submitted</th>
+                        <th>Stage</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in my_requests %}
+                    <tr>
+                        <td class="ps-3 fw-semibold">{{ req.resource_requested }}</td>
+                        <td class="text-muted small">{{ req.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td class="small text-muted">{{ req.stage.replace('_', ' ').title() }}</td>
+                        <td>
+                            <span class="badge
+                                {% if req.status == 'Provisioned' %}bg-success
+                                {% elif req.status == 'Rejected' %}bg-danger
+                                {% elif 'Approved' in req.status %}bg-info text-dark
+                                {% else %}bg-warning text-dark{% endif %}
+                            ">{{ req.status }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-inbox fs-2"></i>
+            <p class="mt-2">No access requests submitted yet.</p>
+            <a href="{{ url_for('employee.new_request') }}" class="btn btn-primary btn-sm">Submit your first request</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

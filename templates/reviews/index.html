@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Access Reviews — IAM Lab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Access Reviews</h4>
+        <p class="text-muted small mb-0">Periodic recertification · Expiry management · Orphan detection</p>
+    </div>
+</div>
+
+<!-- Alert Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100 {{ 'border-start border-4 border-danger' if expired_count > 0 }}">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-clock-history fs-2 me-3 {{ 'text-danger' if expired_count > 0 else 'text-muted' }}"></i>
+                    <div>
+                        <div class="fs-3 fw-bold {{ 'text-danger' if expired_count > 0 }}">{{ expired_count }}</div>
+                        <div class="text-muted small">Expired Roles</div>
+                    </div>
+                </div>
+                <a href="{{ url_for('reviews.expiry') }}" class="btn btn-sm btn-outline-danger w-100 mt-3">
+                    Manage Expiry
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100 {{ 'border-start border-4 border-warning' if orphan_count > 0 }}">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-person-exclamation fs-2 me-3 {{ 'text-warning' if orphan_count > 0 else 'text-muted' }}"></i>
+                    <div>
+                        <div class="fs-3 fw-bold {{ 'text-warning' if orphan_count > 0 }}">{{ orphan_count }}</div>
+                        <div class="text-muted small">Orphan Accounts</div>
+                    </div>
+                </div>
+                <a href="{{ url_for('reviews.orphans') }}" class="btn btn-sm btn-outline-warning w-100 mt-3">
+                    View Orphans
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100 {{ 'border-start border-4 border-secondary' if dormant_count > 0 }}">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-moon-stars fs-2 me-3 text-muted"></i>
+                    <div>
+                        <div class="fs-3 fw-bold">{{ dormant_count }}</div>
+                        <div class="text-muted small">Dormant Accounts</div>
+                    </div>
+                </div>
+                <a href="{{ url_for('reviews.orphans') }}" class="btn btn-sm btn-outline-secondary w-100 mt-3">
+                    View Dormant
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-key fs-2 me-3 text-primary"></i>
+                    <div>
+                        <div class="fs-3 fw-bold">{{ total_active_roles }}</div>
+                        <div class="text-muted small">Active Role Grants</div>
+                    </div>
+                </div>
+                <div class="text-muted small mt-3">Total assignments to certify</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Start New Cycle -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-plus-circle text-success me-2"></i>Start New Review Cycle
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('reviews.start_cycle') }}" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold small">Cycle Name</label>
+                <input type="text" name="cycle_name" class="form-control"
+                       placeholder="e.g. Q3-2026, H1-2026, Annual-2026" required>
+                <div class="form-text">Name your review period. Each name creates a new cycle.</div>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-clipboard-check me-1"></i>Start Review Cycle
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Past Cycles -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-clock-history me-2 text-muted"></i>Review History
+    </div>
+    <div class="card-body p-0">
+        {% if cycles %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Cycle</th>
+                        <th>Reviews Done</th>
+                        <th>Roles Revoked</th>
+                        <th>Started</th>
+                        <th>Last Action</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in cycles %}
+                    <tr>
+                        <td class="ps-3 fw-semibold">{{ c.review_cycle }}</td>
+                        <td>
+                            <span class="badge bg-primary">{{ c.total }}</span>
+                            <span class="text-muted small ms-1">of {{ total_active_roles }}</span>
+                        </td>
+                        <td>
+                            {% if c.revoked > 0 %}
+                            <span class="badge bg-danger">{{ c.revoked }} revoked</span>
+                            {% else %}
+                            <span class="text-muted small">None revoked</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted small">{{ c.started.strftime('%Y-%m-%d') }}</td>
+                        <td class="text-muted small">{{ c.last_action.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <a href="{{ url_for('reviews.cycle', cycle_name=c.review_cycle) }}"
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-eye me-1"></i>Open
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-clipboard fs-2"></i>
+            <p class="mt-2">No review cycles run yet. Start one above.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

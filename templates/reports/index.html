@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% block title %}Governance Reports — IAM Lab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Governance Dashboard</h4>
+        <p class="text-muted small mb-0">System-wide identity and access posture as of {{ today.strftime('%Y-%m-%d %H:%M') }} UTC</p>
+    </div>
+    <a href="{{ url_for('reports.audit_log') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-journal-text me-1"></i>Full Audit Log
+    </a>
+</div>
+
+<!-- Risk Alerts -->
+{% set has_alerts = expired_grants > 0 or orphan_count > 0 or dormant_count > 0 or pending_requests > 0 %}
+{% if has_alerts %}
+<div class="card border-0 shadow-sm mb-4 border-start border-4 border-danger">
+    <div class="card-header bg-white fw-semibold text-danger">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>Risk Alerts Requiring Attention
+    </div>
+    <div class="card-body py-2">
+        {% if expired_grants > 0 %}
+        <div class="d-flex align-items-center py-2 border-bottom">
+            <span class="badge bg-danger me-3">{{ expired_grants }}</span>
+            <span class="small">Expired role grants still active — access should have ended</span>
+            <a href="{{ url_for('reviews.expiry') }}" class="btn btn-danger btn-sm ms-auto">Fix Now</a>
+        </div>
+        {% endif %}
+        {% if orphan_count > 0 %}
+        <div class="d-flex align-items-center py-2 border-bottom">
+            <span class="badge bg-warning text-dark me-3">{{ orphan_count }}</span>
+            <span class="small">Orphan accounts — inactive users with active role assignments</span>
+            <a href="{{ url_for('reviews.orphans') }}" class="btn btn-warning btn-sm ms-auto">Fix Now</a>
+        </div>
+        {% endif %}
+        {% if dormant_count > 0 %}
+        <div class="d-flex align-items-center py-2 border-bottom">
+            <span class="badge bg-secondary me-3">{{ dormant_count }}</span>
+            <span class="small">Dormant accounts — active users with no login in 90+ days</span>
+            <a href="{{ url_for('reviews.orphans') }}" class="btn btn-secondary btn-sm ms-auto">Review</a>
+        </div>
+        {% endif %}
+        {% if pending_requests > 0 %}
+        <div class="d-flex align-items-center py-2">
+            <span class="badge bg-info text-dark me-3">{{ pending_requests }}</span>
+            <span class="small">Access requests awaiting approval</span>
+            <a href="{{ url_for('admin.request_queue') }}" class="btn btn-info btn-sm ms-auto text-dark">Review</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="alert alert-success mb-4">
+    <i class="bi bi-shield-check me-2"></i>
+    <strong>Clean posture.</strong> No orphan accounts, expired access, dormant users, or pending requests detected.
+</div>
+{% endif %}
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm text-center py-3">
+            <div class="fs-2 fw-bold text-primary">{{ total_users }}</div>
+            <div class="text-muted small">Total Users</div>
+            <div class="text-muted" style="font-size:0.72rem;">{{ active_users }} active · {{ inactive_users }} inactive</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm text-center py-3">
+            <div class="fs-2 fw-bold text-success">{{ total_role_grants }}</div>
+            <div class="text-muted small">Active Role Grants</div>
+            <div class="text-muted" style="font-size:0.72rem;">&nbsp;</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm text-center py-3">
+            <div class="fs-2 fw-bold text-info">{{ provisioned_requests }}</div>
+            <div class="text-muted small">Provisioned Requests</div>
+            <div class="text-muted" style="font-size:0.72rem;">{{ rejected_requests }} rejected</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm text-center py-3">
+            <div class="fs-2 fw-bold {{ 'text-success' if jml_joiners > 0 else 'text-muted' }}">{{ jml_joiners }}</div>
+            <div class="text-muted small">Joiners (30d)</div>
+            <div class="text-muted" style="font-size:0.72rem;">&nbsp;</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm text-center py-3">
+            <div class="fs-2 fw-bold {{ 'text-primary' if jml_movers > 0 else 'text-muted' }}">{{ jml_movers }}</div>
+            <div class="text-muted small">Movers (30d)</div>
+            <div class="text-muted" style="font-size:0.72rem;">&nbsp;</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm text-center py-3">
+            <div class="fs-2 fw-bold {{ 'text-danger' if jml_leavers > 0 else 'text-muted' }}">{{ jml_leavers }}</div>
+            <div class="text-muted small">Leavers (30d)</div>
+            <div class="text-muted" style="font-size:0.72rem;">&nbsp;</div>
+        </div>
+    </div>
+</div>
+
+<!-- Role Distribution + CSV Exports -->
+<div class="row g-4 mb-4">
+
+    <div class="col-md-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-pie-chart me-2"></i>Role Distribution
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% for name, cnt in role_counts %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-3">
+                        <span class="badge bg-info text-dark me-2">{{ name }}</span>
+                        <div class="flex-grow-1 mx-2">
+                            {% set pct = ((cnt / total_role_grants) * 100)|int if total_role_grants > 0 else 0 %}
+                            <div class="progress" style="height:8px;">
+                                <div class="progress-bar bg-info" style="width:{{ pct }}%;"></div>
+                            </div>
+                        </div>
+                        <span class="badge bg-secondary">{{ cnt }}</span>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item text-muted text-center py-4">No role assignments yet.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-download me-2"></i>Export Reports
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="border rounded p-3 text-center h-100">
+                            <i class="bi bi-journal-text text-primary fs-2"></i>
+                            <div class="fw-semibold small mt-2">Audit Log</div>
+                            <div class="text-muted" style="font-size:0.72rem;">Complete action history</div>
+                            <a href="{{ url_for('reports.export_audit') }}"
+                               class="btn btn-outline-primary btn-sm mt-2 w-100">
+                                <i class="bi bi-download me-1"></i>Download CSV
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="border rounded p-3 text-center h-100">
+                            <i class="bi bi-people text-success fs-2"></i>
+                            <div class="fw-semibold small mt-2">User Role Assignments</div>
+                            <div class="text-muted" style="font-size:0.72rem;">All active + historical grants</div>
+                            <a href="{{ url_for('reports.export_user_roles') }}"
+                               class="btn btn-outline-success btn-sm mt-2 w-100">
+                                <i class="bi bi-download me-1"></i>Download CSV
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="border rounded p-3 text-center h-100">
+                            <i class="bi bi-person-exclamation text-danger fs-2"></i>
+                            <div class="fw-semibold small mt-2">Orphan Accounts</div>
+                            <div class="text-muted" style="font-size:0.72rem;">Inactive users with active access</div>
+                            <a href="{{ url_for('reports.export_orphans') }}"
+                               class="btn btn-outline-danger btn-sm mt-2 w-100">
+                                <i class="bi bi-download me-1"></i>Download CSV
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="border rounded p-3 text-center h-100">
+                            <i class="bi bi-clipboard-check text-warning fs-2"></i>
+                            <div class="fw-semibold small mt-2">Access Review History</div>
+                            <div class="text-muted" style="font-size:0.72rem;">All cycle decisions</div>
+                            <a href="{{ url_for('reports.export_reviews') }}"
+                               class="btn btn-outline-warning btn-sm mt-2 w-100">
+                                <i class="bi bi-download me-1"></i>Download CSV
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Recent Audit Activity -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-semibold"><i class="bi bi-journal-text me-2"></i>Recent Audit Activity</span>
+        <a href="{{ url_for('reports.audit_log') }}" class="btn btn-outline-secondary btn-sm">
+            View All Logs
+        </a>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Timestamp</th>
+                        <th>Actor</th>
+                        <th>Action</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in recent_logs %}
+                    <tr>
+                        <td class="ps-3 text-muted small">{{ log.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td class="small fw-semibold">{{ log.actor.name if log.actor else 'System' }}</td>
+                        <td>
+                            <span class="badge
+                                {% if 'LOGIN' in log.action %}bg-info text-dark
+                                {% elif 'CREATED' in log.action or 'APPROVED' in log.action or 'PROVISIONED' in log.action or 'JOINER' in log.action %}bg-success
+                                {% elif 'REJECTED' in log.action or 'BLOCKED' in log.action or 'DELETED' in log.action or 'LEAVER' in log.action %}bg-danger
+                                {% elif 'REVOKED' in log.action or 'DEACTIVATED' in log.action or 'EXPIRED' in log.action %}bg-warning text-dark
+                                {% elif 'REVIEW' in log.action or 'MOVER' in log.action %}bg-primary
+                                {% else %}bg-secondary{% endif %}
+                            ">{{ log.action }}</span>
+                        </td>
+                        <td class="small text-muted">{{ (log.details or '—')[:80] }}{{ '…' if log.details and log.details|length > 80 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

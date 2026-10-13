@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% block title %}{{ user.name }} — IAM Lab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">{{ user.name }}</h4>
+        <p class="text-muted small mb-0">{{ user.email }}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('admin.user_list') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>All Users
+        </a>
+        <a href="{{ url_for('admin.user_edit', user_id=user.id) }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-pencil me-1"></i>Edit
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+
+    <!-- Left: Profile Card -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body text-center py-4">
+                <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                     style="width:72px;height:72px;">
+                    <i class="bi bi-person-fill text-secondary fs-2"></i>
+                </div>
+                <h5 class="fw-bold mb-0">{{ user.name }}</h5>
+                <p class="text-muted small mb-2">{{ user.department or 'No Department' }}</p>
+
+                <span class="badge fs-6 mb-3
+                    {% if user.system_role == 'Admin' %}bg-danger
+                    {% elif user.system_role == 'Manager' %}bg-primary
+                    {% else %}bg-secondary{% endif %}">
+                    {{ user.system_role }}
+                </span>
+
+                <div class="mt-1">
+                    <span class="badge {{ 'bg-success' if user.status == 'Active' else 'bg-secondary' }} fs-6">
+                        {{ user.status }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Details -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white fw-semibold small">Profile Details</div>
+            <div class="card-body">
+                <div class="row g-2 small">
+                    <div class="col-5 text-muted">Email</div>
+                    <div class="col-7">{{ user.email }}</div>
+                    <div class="col-5 text-muted">Department</div>
+                    <div class="col-7">{{ user.department or '—' }}</div>
+                    <div class="col-5 text-muted">Manager</div>
+                    <div class="col-7">{{ user.manager.name if user.manager else '—' }}</div>
+                    <div class="col-5 text-muted">Last Login</div>
+                    <div class="col-7">
+                        {{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never' }}
+                    </div>
+                    <div class="col-5 text-muted">Created</div>
+                    <div class="col-7">{{ user.created_at.strftime('%Y-%m-%d') }}</div>
+                    <div class="col-5 text-muted">MFA (TOTP)</div>
+                    <div class="col-7">
+                        {% if user.totp_enabled %}
+                        <span class="badge bg-success"><i class="bi bi-shield-check me-1"></i>Enabled</span>
+                        {% else %}
+                        <span class="badge bg-secondary"><i class="bi bi-shield me-1"></i>Disabled</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="card border-danger border-opacity-25 shadow-sm">
+            <div class="card-header bg-white text-danger fw-semibold small">
+                <i class="bi bi-exclamation-triangle me-1"></i>Danger Zone
+            </div>
+            <div class="card-body">
+                <!-- Toggle status -->
+                <form method="POST" action="{{ url_for('admin.user_toggle', user_id=user.id) }}"
+                      onsubmit="return confirm('Are you sure you want to {{ 'disable' if user.status == 'Active' else 're-enable' }} this user?')">
+                    <button type="submit" class="btn btn-sm w-100 mb-2
+                        {{ 'btn-warning' if user.status == 'Active' else 'btn-success' }}">
+                        <i class="bi bi-{{ 'person-dash' if user.status == 'Active' else 'person-check' }} me-1"></i>
+                        {{ 'Disable Account' if user.status == 'Active' else 'Re-enable Account' }}
+                    </button>
+                </form>
+                        <!-- Mover -->
+                <a href="{{ url_for('jml.mover', user_id=user.id) }}"
+                   class="btn btn-outline-primary btn-sm w-100 mb-2">
+                    <i class="bi bi-arrow-left-right me-1"></i>Transfer (Mover)
+                </a>
+                <!-- Leaver (only for active users) -->
+                {% if user.status == 'Active' %}
+                <a href="{{ url_for('jml.leaver', user_id=user.id) }}"
+                   class="btn btn-warning btn-sm w-100 mb-2">
+                    <i class="bi bi-person-dash me-1"></i>Offboard (Leaver)
+                </a>
+                {% endif %}
+                <!-- Admin force-disable MFA -->
+                {% if user.totp_enabled %}
+                <form method="POST" action="{{ url_for('auth.totp_admin_disable', user_id=user.id) }}"
+                      onsubmit="return confirm('Force-disable MFA for {{ user.name }}? They will only need a password to log in.')">
+                    <button type="submit" class="btn btn-outline-warning btn-sm w-100 mb-2">
+                        <i class="bi bi-shield-x me-1"></i>Force-Disable MFA
+                    </button>
+                </form>
+                {% endif %}
+                <!-- Delete -->
+                <form method="POST" action="{{ url_for('admin.user_delete', user_id=user.id) }}"
+                      onsubmit="return confirm('PERMANENTLY delete {{ user.name }}? This cannot be undone.')">
+                    <button type="submit" class="btn btn-danger btn-sm w-100">
+                        <i class="bi bi-trash me-1"></i>Delete User
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Roles -->
+    <div class="col-lg-8">
+
+        <!-- Current Active Roles -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-key-fill text-success me-2"></i>Active Role Assignments
+            </div>
+            <div class="card-body p-0">
+                {% if active_roles %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Role</th>
+                                <th>Assigned By</th>
+                                <th>Assigned</th>
+                                <th>Expires</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ur in active_roles %}
+                            <tr>
+                                <td class="ps-3">
+                                    <span class="badge bg-info text-dark">{{ ur.role.name }}</span>
+                                    <span class="badge ms-1
+                                        {% if ur.role.classification == 'Restricted' %}bg-danger
+                                        {% elif ur.role.classification == 'Confidential' %}bg-warning text-dark
+                                        {% elif ur.role.classification == 'Public' %}bg-success
+                                        {% else %}bg-secondary{% endif %}"
+                                        style="font-size:0.65rem;">
+                                        {{ ur.role.classification or 'Internal' }}
+                                    </span>
+                                </td>
+                                <td class="small text-muted">
+                                    {{ ur.assigner.name if ur.assigner else 'System' }}
+                                </td>
+                                <td class="small text-muted">{{ ur.assigned_at.strftime('%Y-%m-%d') }}</td>
+                                <td class="small">
+                                    {% if ur.expires_at %}
+                                        <span class="{{ 'text-danger fw-semibold' if ur.expires_at < today else 'text-muted' }}">
+                                            {{ ur.expires_at.strftime('%Y-%m-%d') }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">No expiry</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <form method="POST"
+                                          action="{{ url_for('admin.revoke_role', user_id=user.id, ur_id=ur.id) }}"
+                                          onsubmit="return confirm('Revoke {{ ur.role.name }} from {{ user.name }}?')">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                            <i class="bi bi-x-circle me-1"></i>Revoke
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-key fs-2"></i>
+                    <p class="mt-2 mb-0 small">No active roles assigned.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Assign New Role -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-plus-circle text-primary me-2"></i>Assign Role
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.assign_role', user_id=user.id) }}"
+                      class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold small">Role</label>
+                        <select name="role_id" class="form-select form-select-sm" required>
+                            <option value="">— Select a role —</option>
+                            {% for role in all_roles %}
+                            <option value="{{ role.id }}"
+                                {{ 'disabled' if role.id in active_role_ids }}>
+                                {{ role.name }} [{{ role.classification or 'Internal' }}]
+                                {{ '— already assigned' if role.id in active_role_ids }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold small">Expiry Date <span class="text-muted">(optional)</span></label>
+                        <input type="date" name="expires_at" class="form-control form-control-sm"
+                               min="{{ today_str }}">
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                            <i class="bi bi-plus-circle me-1"></i>Assign Role
+                        </button>
+                    </div>
+                    <div class="col-12">
+                        <p class="text-muted small mb-0">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Leave expiry blank for permanent access. Set an expiry to enforce access recertification.
+                        </p>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

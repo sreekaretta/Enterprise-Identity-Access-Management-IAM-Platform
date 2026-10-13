@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% block title %}Request #{{ req.id }} — IAM Lab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Request #{{ req.id }}</h4>
+        <p class="text-muted small mb-0">{{ req.resource_requested }}</p>
+    </div>
+    <div>
+        {% if viewer == 'employee' %}
+            <a href="{{ url_for('employee.my_requests') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>My Requests
+            </a>
+        {% elif viewer == 'manager' %}
+            <a href="{{ url_for('manager.request_queue') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Request Queue
+            </a>
+        {% else %}
+            <a href="{{ url_for('admin.request_queue') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Request Queue
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+
+    <!-- Left: Request Summary -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white fw-semibold small">Request Summary</div>
+            <div class="card-body">
+                <div class="row g-2 small">
+                    <div class="col-5 text-muted">Requester</div>
+                    <div class="col-7 fw-semibold">{{ req.requester.name }}</div>
+                    <div class="col-5 text-muted">Department</div>
+                    <div class="col-7">{{ req.requester.department or '—' }}</div>
+                    <div class="col-5 text-muted">Resource</div>
+                    <div class="col-7">
+                        {{ req.resource_requested }}
+                        {% if resource_role %}
+                        <br>
+                        <span class="badge mt-1
+                            {% if resource_role.classification == 'Restricted' %}bg-danger
+                            {% elif resource_role.classification == 'Confidential' %}bg-warning text-dark
+                            {% elif resource_role.classification == 'Public' %}bg-success
+                            {% else %}bg-secondary{% endif %}">
+                            {{ resource_role.classification }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="col-5 text-muted">Submitted</div>
+                    <div class="col-7">{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                    <div class="col-5 text-muted">Status</div>
+                    <div class="col-7">
+                        <span class="badge
+                            {% if req.status == 'Provisioned' %}bg-success
+                            {% elif req.status == 'Rejected' %}bg-danger
+                            {% elif 'Approved' in req.status %}bg-info text-dark
+                            {% else %}bg-warning text-dark{% endif %}">
+                            {{ req.status }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold small">Business Justification</div>
+            <div class="card-body">
+                <p class="small mb-0 text-muted fst-italic">"{{ req.reason }}"</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Approval Timeline -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-diagram-3 me-2"></i>Approval Timeline
+            </div>
+            <div class="card-body">
+
+                <!-- Step 1: Submitted -->
+                <div class="d-flex mb-4">
+                    <div class="me-3 text-center" style="min-width:36px;">
+                        <div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center text-white"
+                             style="width:36px;height:36px;"><i class="bi bi-send-fill"></i></div>
+                        <div class="border-start border-2 mx-auto mt-1" style="height:40px;width:2px;"></div>
+                    </div>
+                    <div class="pt-1">
+                        <div class="fw-semibold small">Submitted</div>
+                        <div class="text-muted small">{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                        <div class="small mt-1">By <strong>{{ req.requester.name }}</strong></div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Manager Review -->
+                <div class="d-flex mb-4">
+                    <div class="me-3 text-center" style="min-width:36px;">
+                        {% if req.manager_decision == 'Approved' %}
+                            <div class="rounded-circle bg-success d-inline-flex align-items-center justify-content-center text-white"
+                                 style="width:36px;height:36px;"><i class="bi bi-check-lg"></i></div>
+                        {% elif req.manager_decision == 'Rejected' %}
+                            <div class="rounded-circle bg-danger d-inline-flex align-items-center justify-content-center text-white"
+                                 style="width:36px;height:36px;"><i class="bi bi-x-lg"></i></div>
+                        {% else %}
+                            <div class="rounded-circle bg-warning d-inline-flex align-items-center justify-content-center text-white"
+                                 style="width:36px;height:36px;"><i class="bi bi-hourglass-split"></i></div>
+                        {% endif %}
+                        <div class="border-start border-2 mx-auto mt-1" style="height:40px;width:2px;"></div>
+                    </div>
+                    <div class="pt-1">
+                        <div class="fw-semibold small">Manager Review</div>
+                        {% if req.manager %}
+                            <div class="text-muted small">{{ req.manager.name }}</div>
+                        {% endif %}
+                        {% if req.manager_decision %}
+                            <div class="small mt-1">
+                                <span class="badge {{ 'bg-success' if req.manager_decision == 'Approved' else 'bg-danger' }}">
+                                    {{ req.manager_decision }}
+                                </span>
+                                <span class="text-muted ms-1">{{ req.manager_action_at.strftime('%Y-%m-%d %H:%M') if req.manager_action_at }}</span>
+                            </div>
+                            {% if req.manager_comments %}
+                            <div class="small text-muted fst-italic mt-1">"{{ req.manager_comments }}"</div>
+                            {% endif %}
+                        {% else %}
+                            <div class="small text-warning mt-1"><i class="bi bi-hourglass me-1"></i>Awaiting decision</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Step 3: Admin Review -->
+                <div class="d-flex mb-4">
+                    <div class="me-3 text-center" style="min-width:36px;">
+                        {% if req.admin_decision == 'Approved' %}
+                            <div class="rounded-circle bg-success d-inline-flex align-items-center justify-content-center text-white"
+                                 style="width:36px;height:36px;"><i class="bi bi-check-lg"></i></div>
+                        {% elif req.admin_decision == 'Rejected' %}
+                            <div class="rounded-circle bg-danger d-inline-flex align-items-center justify-content-center text-white"
+                                 style="width:36px;height:36px;"><i class="bi bi-x-lg"></i></div>
+                        {% elif req.stage == 'admin_review' %}
+                            <div class="rounded-circle bg-warning d-inline-flex align-items-center justify-content-center text-white"
+                                 style="width:36px;height:36px;"><i class="bi bi-hourglass-split"></i></div>
+                        {% else %}
+                            <div class="rounded-circle bg-light border d-inline-flex align-items-center justify-content-center text-muted"
+                                 style="width:36px;height:36px;"><i class="bi bi-shield-lock"></i></div>
+                        {% endif %}
+                        <div class="border-start border-2 mx-auto mt-1" style="height:40px;width:2px;"></div>
+                    </div>
+                    <div class="pt-1">
+                        <div class="fw-semibold small">Admin Review</div>
+                        {% if req.admin_decision %}
+                            <div class="small mt-1">
+                                <span class="badge {{ 'bg-success' if req.admin_decision == 'Approved' else 'bg-danger' }}">
+                                    {{ req.admin_decision }}
+                                </span>
+                                <span class="text-muted ms-1">{{ req.admin_action_at.strftime('%Y-%m-%d %H:%M') if req.admin_action_at }}</span>
+                            </div>
+                            {% if req.admin_comments %}
+                            <div class="small text-muted fst-italic mt-1">"{{ req.admin_comments }}"</div>
+                            {% endif %}
+                        {% elif req.stage == 'admin_review' %}
+                            <div class="small text-warning mt-1"><i class="bi bi-hourglass me-1"></i>Awaiting decision</div>
+                        {% elif req.stage == 'manager_review' %}
+                            <div class="small text-muted mt-1">Waiting for manager first</div>
+                        {% elif req.stage == 'rejected' and not req.admin_decision %}
+                            <div class="small text-muted mt-1">Not reached (rejected by manager)</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Step 4: Provisioned -->
+                <div class="d-flex">
+                    <div class="me-3 text-center" style="min-width:36px;">
+                        {% if req.stage == 'provisioned' %}
+                            <div class="rounded-circle bg-success d-inline-flex align-items-center justify-content-center text-white"
+                                 style="width:36px;height:36px;"><i class="bi bi-key-fill"></i></div>
+                        {% else %}
+                            <div class="rounded-circle bg-light border d-inline-flex align-items-center justify-content-center text-muted"
+                                 style="width:36px;height:36px;"><i class="bi bi-key"></i></div>
+                        {% endif %}
+                    </div>
+                    <div class="pt-1">
+                        <div class="fw-semibold small">Access Provisioned</div>
+                        {% if req.stage == 'provisioned' %}
+                            <div class="text-success small mt-1">
+                                <i class="bi bi-check-circle me-1"></i>
+                                Access granted on {{ req.provisioned_at.strftime('%Y-%m-%d %H:%M') if req.provisioned_at }}
+                            </div>
+                        {% elif req.stage == 'rejected' %}
+                            <div class="text-danger small mt-1">
+                                <i class="bi bi-x-circle me-1"></i>Not provisioned — request was rejected
+                            </div>
+                        {% else %}
+                            <div class="small text-muted mt-1">Pending approvals above</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Manager Action Panel (only shown to manager when pending) -->
+        {% if viewer == 'manager' and req.stage == 'manager_review' %}
+        <div class="card border-0 shadow-sm border-warning border-opacity-50">
+            <div class="card-header bg-white fw-semibold text-warning">
+                <i class="bi bi-exclamation-circle me-2"></i>Your Decision Required
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <form method="POST" action="{{ url_for('manager.approve_request', req_id=req.id) }}">
+                            <label class="form-label fw-semibold small">Comments (optional)</label>
+                            <textarea name="comments" class="form-control form-control-sm mb-2" rows="2"
+                                      placeholder="Add a note for the Admin..."></textarea>
+                            <button type="submit" class="btn btn-success w-100"
+                                    onclick="return confirm('Approve this request and forward to Admin?')">
+                                <i class="bi bi-check-circle me-1"></i>Approve & Forward to Admin
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <form method="POST" action="{{ url_for('manager.reject_request', req_id=req.id) }}">
+                            <label class="form-label fw-semibold small">Rejection Reason <span class="text-danger">*</span></label>
+                            <textarea name="comments" class="form-control form-control-sm mb-2" rows="2"
+                                      placeholder="Required: explain why access is denied..." required></textarea>
+                            <button type="submit" class="btn btn-danger w-100">
+                                <i class="bi bi-x-circle me-1"></i>Reject Request
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Admin Action Panel (only shown to admin when pending) -->
+        {% if viewer == 'admin' and req.stage == 'admin_review' %}
+        <div class="card border-0 shadow-sm border-primary border-opacity-50">
+            <div class="card-header bg-white fw-semibold text-primary">
+                <i class="bi bi-shield-lock me-2"></i>Final Approval Required
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <form method="POST" action="{{ url_for('admin.approve_request', req_id=req.id) }}">
+                            <label class="form-label fw-semibold small">Comments (optional)</label>
+                            <textarea name="comments" class="form-control form-control-sm mb-2" rows="2"
+                                      placeholder="Approval notes..."></textarea>
+                            <button type="submit" class="btn btn-success w-100"
+                                    onclick="return confirm('Approve and provision access?')">
+                                <i class="bi bi-key-fill me-1"></i>Approve & Provision Access
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <form method="POST" action="{{ url_for('admin.reject_request', req_id=req.id) }}">
+                            <label class="form-label fw-semibold small">Rejection Reason <span class="text-danger">*</span></label>
+                            <textarea name="comments" class="form-control form-control-sm mb-2" rows="2"
+                                      placeholder="Required: explain why access is denied..." required></textarea>
+                            <button type="submit" class="btn btn-danger w-100">
+                                <i class="bi bi-x-circle me-1"></i>Reject Request
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

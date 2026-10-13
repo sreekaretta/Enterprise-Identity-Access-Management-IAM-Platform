@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Joiner — Onboard New Employee — IAM Lab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0"><i class="bi bi-person-plus-fill text-success me-2"></i>Joiner — Onboard New Employee</h4>
+        <p class="text-muted small mb-0">Create account and assign initial roles in one step</p>
+    </div>
+    <a href="{{ url_for('jml.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>JML Dashboard
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="POST" novalidate>
+
+                    <h6 class="fw-bold text-muted text-uppercase small mb-3">Account Details</h6>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+                            <input type="text" name="name" class="form-control"
+                                   value="{{ form.name if form.name else '' }}"
+                                   placeholder="e.g. Jane Smith" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                            <input type="email" name="email" class="form-control"
+                                   value="{{ form.email if form.email else '' }}"
+                                   placeholder="jane@company.com" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
+                        <input type="password" name="password" class="form-control"
+                               placeholder="Minimum 8 characters" required>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6 class="fw-bold text-muted text-uppercase small mb-3">Role & Placement</h6>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Department</label>
+                            <input type="text" name="department" class="form-control"
+                                   value="{{ form.department if form.department else '' }}"
+                                   placeholder="e.g. Finance, HR, IT">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">System Role</label>
+                            <select name="system_role" class="form-select">
+                                {% for r in ['Employee', 'Manager', 'Admin'] %}
+                                <option value="{{ r }}"
+                                    {{ 'selected' if (form.system_role if form.system_role else 'Employee') == r }}>
+                                    {{ r }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Reporting Manager</label>
+                        <select name="manager_id" class="form-select">
+                            <option value="">— None —</option>
+                            {% for mgr in managers %}
+                            <option value="{{ mgr.id }}">{{ mgr.name }} ({{ mgr.department or 'No dept' }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6 class="fw-bold text-muted text-uppercase small mb-3">Initial Access (optional)</h6>
+                    <p class="text-muted small mb-3">
+                        Select the roles this employee needs from day one.
+                        Additional access can be requested later via the approval workflow.
+                    </p>
+
+                    <div class="row g-2 mb-4">
+                        {% for role in all_roles %}
+                        <div class="col-md-6">
+                            <div class="form-check border rounded p-3">
+                                <input class="form-check-input" type="checkbox"
+                                       name="role_ids" value="{{ role.id }}"
+                                       id="role_{{ role.id }}">
+                                <label class="form-check-label ps-1" for="role_{{ role.id }}">
+                                    <span class="fw-semibold">{{ role.name }}</span>
+                                    <div class="text-muted small">{{ role.description }}</div>
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success px-4">
+                            <i class="bi bi-person-check me-1"></i>Complete Onboarding
+                        </button>
+                        <a href="{{ url_for('jml.dashboard') }}" class="btn btn-outline-secondary px-4">Cancel</a>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Leaver — {{ user.name }} — IAM Lab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0"><i class="bi bi-person-dash-fill text-danger me-2"></i>Leaver — Offboard Employee</h4>
+        <p class="text-muted small mb-0">Review what will happen, then confirm offboarding</p>
+    </div>
+    <a href="{{ url_for('jml.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>JML Dashboard
+    </a>
+</div>
+
+<!-- Warning Banner -->
+<div class="alert alert-danger mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+        <div>
+            <strong>You are about to offboard {{ user.name }}.</strong><br>
+            <span class="small">This will disable their account, revoke all access, and cancel all pending requests.
+            This action is logged in the audit trail but <strong>cannot be automatically undone</strong>.</span>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+
+    <!-- User Profile -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body text-center py-4">
+                <div class="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center
+                            justify-content-center mb-3" style="width:64px;height:64px;">
+                    <i class="bi bi-person-fill text-danger fs-3"></i>
+                </div>
+                <h5 class="fw-bold mb-0">{{ user.name }}</h5>
+                <p class="text-muted small">{{ user.email }}</p>
+                <div class="row g-1 small text-start mt-2">
+                    <div class="col-5 text-muted">Department</div>
+                    <div class="col-7">{{ user.department or '—' }}</div>
+                    <div class="col-5 text-muted">System Role</div>
+                    <div class="col-7">{{ user.system_role }}</div>
+                    <div class="col-5 text-muted">Manager</div>
+                    <div class="col-7">{{ user.manager.name if user.manager else '—' }}</div>
+                    <div class="col-5 text-muted">Status</div>
+                    <div class="col-7">
+                        <span class="badge bg-success">{{ user.status }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- What Will Happen -->
+    <div class="col-lg-8">
+
+        <!-- Roles that will be revoked -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white fw-semibold small">
+                <i class="bi bi-key text-danger me-2"></i>
+                Roles That Will Be Revoked
+                <span class="badge bg-danger ms-1">{{ active_roles|length }}</span>
+            </div>
+            <div class="card-body p-0">
+                {% if active_roles %}
+                <ul class="list-group list-group-flush">
+                    {% for ur in active_roles %}
+                    <li class="list-group-item px-3 py-2 d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-info text-dark me-2">{{ ur.role.name }}</span>
+                            <span class="text-muted small">Assigned {{ ur.assigned_at.strftime('%Y-%m-%d') }}</span>
+                        </div>
+                        <i class="bi bi-x-circle text-danger"></i>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted small text-center py-3 mb-0">
+                    <i class="bi bi-check-circle text-success me-1"></i>No active roles to revoke.
+                </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Pending requests that will be cancelled -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white fw-semibold small">
+                <i class="bi bi-send-x text-warning me-2"></i>
+                Pending Requests That Will Be Cancelled
+                <span class="badge bg-warning text-dark ms-1">{{ pending_requests|length }}</span>
+            </div>
+            <div class="card-body p-0">
+                {% if pending_requests %}
+                <ul class="list-group list-group-flush">
+                    {% for req in pending_requests %}
+                    <li class="list-group-item px-3 py-2 d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="small fw-semibold">{{ req.resource_requested }}</div>
+                            <div class="text-muted" style="font-size:0.75rem;">
+                                Stage: {{ req.stage.replace('_', ' ').title() }}
+                                · Submitted {{ req.created_at.strftime('%Y-%m-%d') }}
+                            </div>
+                        </div>
+                        <i class="bi bi-x-circle text-warning"></i>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted small text-center py-3 mb-0">
+                    <i class="bi bi-check-circle text-success me-1"></i>No pending requests to cancel.
+                </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Confirm -->
+        <div class="card border-danger border-opacity-50 shadow-sm">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="fw-bold text-danger">Confirm Offboarding</div>
+                            <div class="text-muted small">
+                                Account will be disabled immediately. All {{ active_roles|length }}
+                                role(s) revoked. {{ pending_requests|length }} request(s) cancelled.
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-danger px-4"
+                                onclick="return confirm('Offboard {{ user.name }} now? This cannot be undone.')">
+                            <i class="bi bi-person-dash me-1"></i>Offboard Now
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

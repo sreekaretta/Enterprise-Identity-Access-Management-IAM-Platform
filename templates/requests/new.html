@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Request Access — IAM Lab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Request Access</h4>
+        <p class="text-muted small mb-0">Submit a new access request for approval</p>
+    </div>
+    <a href="{{ url_for('employee.my_requests') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>My Requests
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+
+                <!-- Approval flow info -->
+                <div class="alert alert-info small mb-4">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Your request will go through <strong>two approvals</strong> before access is granted:
+                    <strong>Manager → Admin → Access Provisioned</strong>.
+                </div>
+
+                <form method="POST" action="{{ url_for('employee.new_request') }}" novalidate>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Resource Requested <span class="text-danger">*</span></label>
+                        {% for resource, role in resources.items() %}
+                        {% set info = resources_info.get(resource, {}) %}
+                        <div class="form-check border rounded p-3 mb-2 resource-option">
+                            <input class="form-check-input" type="radio" name="resource"
+                                   id="res_{{ loop.index }}" value="{{ resource }}" required>
+                            <label class="form-check-label w-100 ps-1" for="res_{{ loop.index }}">
+                                <span class="fw-semibold">{{ resource }}</span>
+                                <span class="badge bg-secondary ms-2">{{ role }} Role</span>
+                                <span class="badge {{ info.badge or 'bg-secondary' }} ms-1">
+                                    {{ info.classification or 'Internal' }}
+                                </span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                        <div class="form-text">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Classification indicates data sensitivity:
+                            <span class="badge bg-secondary">Internal</span>
+                            <span class="badge bg-warning text-dark">Confidential</span>
+                            <span class="badge bg-danger">Restricted</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="reason" class="form-label fw-semibold">
+                            Business Justification <span class="text-danger">*</span>
+                        </label>
+                        <textarea name="reason" id="reason" class="form-control" rows="4"
+                                  placeholder="Explain why you need this access and how you will use it (minimum 30 characters)..."
+                                  required minlength="30"></textarea>
+                        <div class="d-flex justify-content-between mt-1">
+                            <div class="form-text">
+                                Be specific — describe the business need, project, or task requiring this access.
+                            </div>
+                            <div class="form-text text-end">
+                                <span id="char-count">0</span> / 30 min
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-send me-1"></i>Submit Request
+                        </button>
+                        <a href="{{ url_for('employee.dashboard') }}" class="btn btn-outline-secondary px-4">Cancel</a>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.resource-option:has(input:checked) {
+    border-color: #0d6efd !important;
+    background-color: #f0f5ff;
+}
+.resource-option { cursor: pointer; transition: all 0.15s; }
+.resource-option:hover { border-color: #86b7fe !important; }
+</style>
+<script>
+(function () {
+    const ta = document.getElementById('reason');
+    const counter = document.getElementById('char-count');
+    if (!ta || !counter) return;
+    function update() {
+        const len = ta.value.length;
+        counter.textContent = len;
+        counter.className = len >= 30 ? 'text-success fw-semibold' : 'text-danger fw-semibold';
+    }
+    ta.addEventListener('input', update);
+    update();
+})();
+</script>
+{% endblock %}
